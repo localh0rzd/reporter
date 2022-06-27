@@ -12,6 +12,7 @@ import argparse
 import os
 import json
 import logging
+import re
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file', default='kapow.xml', help='File to process')
@@ -153,6 +154,12 @@ def add_project_times(project_id, date, rounded_day):
     print(request.json())
     #{"date":"2022-06-27 00:00:00","project":29,"task":1,"duration":60,"comment":"test","begin":null,"end":null,"billable":true}
 
+def get_project_times(project_id):
+    request = requests.get(f'https://fruuts.timicx.net/ws/2.0/project_time.json?project={project_id}', auth=(args.username, args.password))
+    return request.json()
+
+def extract_id(project):
+    return re.search("(\d+)$", project).group(1)
 
 if __name__ == "__main__":
     if args.list_projects:
@@ -162,16 +169,24 @@ if __name__ == "__main__":
         get_projects()
     if args.add_sessions:
         data = parse_xml(args.file)
+
         if not args.project or not data[args.project]:
             print(f"Project not found")
             exit(1)
+        #booked_dates = list(map(, get_project_times(args.project)))
+        project_id = extract_id(args.project)
+        print(list(map(lambda y: y["date"][:10], get_project_times(project_id))))
+        booked_dates = list(reduce(lambda r, x: r + [x] if x not in r else r, list(map(lambda y: y["date"][:10], get_project_times(project_id))), []))
         for date in data[args.project]:
-            unbilled_day = list(filter(lambda x: not x['billed'], data[args.project][date]))
+            unbilled_dates = list(filter(lambda x: not x['billed'], data[args.project][date]))
+            unbilled_dates = list(reduce(lambda r, x: r + [x] if x not in r else r, list(map(lambda y: y["date"][:10], unbilled_dates)), list(map(lambda z: z[:10], booked_dates))))
+            print(booked_dates, unbilled_dates, list(set(unbilled_dates) - set(booked_dates)))
+            exit(0)
             if len(unbilled_day):
                 rounded_day = round_day(unbilled_day)
                 ### TODO
-                ### ranges
-                add_project_times(209, date, rounded_day)
+                ###
+                #add_project_times(209, date, rounded_day)
     if args.list_sessions:
         data = parse_xml(args.file)
         if not args.project or not data[args.project]:
