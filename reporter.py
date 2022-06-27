@@ -169,24 +169,23 @@ if __name__ == "__main__":
         get_projects()
     if args.add_sessions:
         data = parse_xml(args.file)
-
         if not args.project or not data[args.project]:
             print(f"Project not found")
             exit(1)
-        #booked_dates = list(map(, get_project_times(args.project)))
         project_id = extract_id(args.project)
         print(list(map(lambda y: y["date"][:10], get_project_times(project_id))))
         booked_dates = list(reduce(lambda r, x: r + [x] if x not in r else r, list(map(lambda y: y["date"][:10], get_project_times(project_id))), []))
         for date in data[args.project]:
             unbilled_dates = list(filter(lambda x: not x['billed'], data[args.project][date]))
             unbilled_dates = list(reduce(lambda r, x: r + [x] if x not in r else r, list(map(lambda y: y["date"][:10], unbilled_dates)), list(map(lambda z: z[:10], booked_dates))))
-            print(booked_dates, unbilled_dates, list(set(unbilled_dates) - set(booked_dates)))
-            exit(0)
-            if len(unbilled_day):
-                rounded_day = round_day(unbilled_day)
-                ### TODO
-                ###
-                #add_project_times(209, date, rounded_day)
+            unbooked_dates = list(set(unbilled_dates) - set(booked_dates))
+            for unbilled_date in unbooked_dates:
+                print(unbilled_date)
+                if unbilled_date not in data[args.project]:
+                    continue
+                rounded_day = round_day(data[args.project][unbilled_date])
+                print(rounded_day)
+                add_project_times(209, date, rounded_day)
     if args.list_sessions:
         data = parse_xml(args.file)
         if not args.project or not data[args.project]:
