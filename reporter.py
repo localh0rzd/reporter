@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from functools import reduce
 from xml.dom.minidom import parse, parseString
 import xml.etree.ElementTree as ET
@@ -23,6 +23,7 @@ parser.add_argument('-m', '--month',  help='Month to create report for (yyyy-mm)
 parser.add_argument('-l', '--list-projects',  help='List available project with their respective ids',  action='store_true')
 parser.add_argument('-t', '--list-sessions',  help='List unbilled sessions for project', action='store_true')
 parser.add_argument('-a', '--add-sessions',  help='Add unbilled sessions for project', action='store_true')
+parser.add_argument('-w', '--write-report',  help='Write CSV report for set month', action='store_true')
 args = parser.parse_args()
 
 def parse_xml(file):
@@ -159,9 +160,38 @@ def get_project_times(project_id):
     return request.json()
 
 def extract_id(project):
+    res = re.search("(\d+)$", project)
+    if not res:
+        raise Exception("Trailing ID missing")
     return re.search("(\d+)$", project).group(1)
 
 if __name__ == "__main__":
+    if args.write_report:
+        if not args.month:
+            print("Month missing")
+            exit(1)
+        data = parse_xml(args.file)
+        if not args.project or not data[args.project]:
+            print(f"Project not found")
+            exit(1)
+        with open(f"{args.month}_{args.project}.csv", "w") as f:
+            f.write('date;start;stop;note;duration;month_sum\n')
+            month_sum_date = datetime.fromtimestamp(0, tz=timezone.utc).replace(second=0, minute=0, hour=0)
+            print(month_sum_date.timestamp())
+            for date in data[args.project]:
+                day = list(filter(lambda x: not x['billed'], data[args.project][date]))
+                if len(day):
+                    rounded_day = round_day(day)
+                    #print(date, rounded_day['day_sum'], rounded_day['day_summary'])
+                    for session in rounded_day['sessions']:
+                        f.write(f"{date};{session['start']};{session['stop']};{session['note']};{session['duration']};\n")
+                        month_sum_date += timedelta(hours=int(session['duration'][:2]), minutes=int(session['duration'][3:]))
+                        #print(f"{session['start']} - {session['stop']}: {session['note']} ({session['duration']})")
+            total_seconds = int(month_sum_date.timestamp())
+            f.write(f";;;;;{int(total_seconds/3600):02d}:{int(total_seconds/60 %60):02d}")
+            f.close()
+            exit(0)
+        
     if args.list_projects:
         if not args.username or not args.password:
             print("Username or password missing")
