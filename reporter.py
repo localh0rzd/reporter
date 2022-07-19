@@ -198,6 +198,9 @@ if __name__ == "__main__":
             exit(1)
         get_projects()
     if args.add_sessions:
+        if not args.username or not args.password:
+            print("Username or password missing")
+            exit(1)
         data = parse_xml(args.file)
         if not args.project or not data[args.project]:
             print(f"Project not found")
@@ -215,7 +218,7 @@ if __name__ == "__main__":
                     continue
                 rounded_day = round_day(data[args.project][unbilled_date])
                 print(rounded_day)
-                add_project_times(209, date, rounded_day)
+                add_project_times(project_id, date, rounded_day)
     if args.list_sessions:
         data = parse_xml(args.file)
         if not args.project or not data[args.project]:
