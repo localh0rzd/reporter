@@ -30,14 +30,16 @@ def parse_xml(file):
     et = ET.parse(file)
     data = {}
     for x in et.findall("project"):
+        print(f"project {x.get('name')}")
         project = x.get('name')
         # if args.project and args.project not in project:
         #     break
         data[project] = {}
         for y in x.findall('session'):
             session_date = y.get('date')
+            print(session_date)
             if args.month and args.month not in session_date:
-                break
+                continue
             if session_date not in data[project]:
                 data[project][session_date] = []
             data[project][session_date].append({
@@ -172,6 +174,7 @@ if __name__ == "__main__":
             exit(1)
         data = parse_xml(args.file)
         if not args.project or not data[args.project]:
+            print(args.project, data)
             print(f"Project not found")
             exit(1)
         with open(f"{args.month}_{args.project}.csv", "w") as f:
