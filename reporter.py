@@ -14,6 +14,8 @@ import json
 import logging
 import re
 
+logging.basicConfig(level=logging.DEBUG)
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file', default='kapow.xml', help='File to process')
 parser.add_argument('--project', help='Which project to use')
@@ -30,14 +32,12 @@ def parse_xml(file):
     et = ET.parse(file)
     data = {}
     for x in et.findall("project"):
-        print(f"project {x.get('name')}")
         project = x.get('name')
         # if args.project and args.project not in project:
         #     break
         data[project] = {}
         for y in x.findall('session'):
             session_date = y.get('date')
-            print(session_date)
             if args.month and args.month not in session_date:
                 continue
             if session_date not in data[project]:
@@ -110,6 +110,7 @@ def get_projects():
 
 def round_day(day):
     rounded_day = day.copy()
+    logging.debug(rounded_day)
     day_sum = reduce(lambda acc, curr: acc + (curr["stop"] - curr["start"]).total_seconds() / 60, rounded_day, 0)
     mdl = int(day_sum % 15)
     sessions = []
@@ -122,7 +123,7 @@ def round_day(day):
     for session in rounded_day:
         logging.debug(f"{datetime.strftime(session['start'], '%H:%M')} - {datetime.strftime(session['stop'], '%H:%M')}: {session['note']} ({session['stop'] - session['start']})")
     day_sum_date = datetime.fromtimestamp(0).replace(second=0, minute=0, hour=0) + timedelta(minutes = day_sum)
-    logging.debug(day_sum, f"{day_sum_date.hour}:{day_sum_date.minute}")
+    #logging.debug(day_sum, f"{day_sum_date.hour}:{day_sum_date.minute}")
     logging.debug(rounded_day)
     def map_sessions(session):
         delta = session['stop'] - session['start']
@@ -174,7 +175,6 @@ if __name__ == "__main__":
             exit(1)
         data = parse_xml(args.file)
         if not args.project or not data[args.project]:
-            print(args.project, data)
             print(f"Project not found")
             exit(1)
         with open(f"{args.month}_{args.project}.csv", "w") as f:
@@ -182,7 +182,8 @@ if __name__ == "__main__":
             month_sum_date = datetime.fromtimestamp(0, tz=timezone.utc).replace(second=0, minute=0, hour=0)
             print(month_sum_date.timestamp())
             for date in data[args.project]:
-                day = list(filter(lambda x: not x['billed'], data[args.project][date]))
+                #day = list(filter(lambda x: not x['billed'], data[args.project][date]))
+                day = data[args.project][date]
                 if len(day):
                     rounded_day = round_day(day)
                     #print(date, rounded_day['day_sum'], rounded_day['day_summary'])
